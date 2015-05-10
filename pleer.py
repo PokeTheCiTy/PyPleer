@@ -71,7 +71,6 @@ def parse_result(results):
         music = results[result]
         lastSearch.append(music['id'])
         print('['+G+str(len(lastSearch))+W+'] '
-            #+'['+G+music['id']+W+'] '
             +music['track']
             +'('+C+music['artist']+W+') '
             +parse_bitrate(music['bitrate']))
@@ -92,7 +91,6 @@ def parse_bitrate(bitrate):
 
 
 def search_track(args, token, quality, nb_results):
-    #search = input('['+G+'*'+W+'] Search: ')
     rSearch = s.post('http://api.pleer.com/index.php',
         data = {'access_token':token,
         'method':'tracks_search',
@@ -180,10 +178,3 @@ if __name__ == "__main__":
             print('['+G+'+'+W+'] '+track)
 
     sys.exit(0)
-
-#postData = {'action':'download', 'id':'12924079tZmc'}
-#r = s.put('http://pleer.com/site_api/files/get_url', params=postData)
-#print(r.status_code)
-#url = r.json()['track_link']
-#print(url)
-#mp3name = wget.download(url)
