@@ -19,10 +19,11 @@ GR = '\033[37m' # gray
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--search", help="search field")
-    parser.add_argument("-d", "--download", type=int, help="download the track.", nargs='+')
-    parser.add_argument("-q", "--quality", help="quality wanted for the search")
+    parser.add_argument("-d", "--download", type=int, help="Download the track.", nargs='+')
+    parser.add_argument("-q", "--quality", help="Quality wanted for the search (all, bad, good, best")
     parser.add_argument("-H", "--history", help="Show the last downloaded tracks.", action="store_true")
     parser.add_argument("-r", "--result", type=int, help="Number of results displayed.")
+    parser.add_argument("-t", "--top", help="Get the top downloaded tracks (week, month, 3months, halfyear, year")
 
     return parser.parse_args()
 
@@ -102,8 +103,7 @@ def search_track(args, token, quality, nb_results):
     lastSearch = []
     if rSearch.status_code == 200:
         lastSearch = parse_result(rSearch.json()['tracks'])
-    elif rSearch.status_code == 401:
-        if rSearch.json()['error'] == "invalid_token":
+    elif rSearch.status_code == 401 and rSearch.json()['error'] == "invalid_token":
             config['token'] = getToken(config['userId'], config['appToken'])
             search_track(args, config['token'], quality, nb_results)
     else:
@@ -124,21 +124,54 @@ def download_track(track_id, token):
         url = rDownload.json()["url"]
         mp3name = wget.download(url)
         print('\n['+G+'Completed'+W+'] '+mp3name+W)
-    elif rDownload.status_code == 401:
-        if rDownload.json()['error'] == "invalid_token":
+    elif rDownload.status_code == 401 and rDownload.json()['error'] == "invalid_token":
             config['token'] = getToken(config['userId'], config['appToken'])
             download_track(track_id, config['token'],)
     else:
         print('['+R+'Error'+W+']')
-        print(rSearch.text)
+        print(rDownload.text)
     return mp3name
 
+
+def get_top_tracks(list_type, token):
+    rTop = s.post('http://api.pleer.com/index.php',
+        data = {'access_token':token,
+        'method':'get_top_list',
+        'list_type': list_type,
+        'page': 1,
+        'language': 'en'})
+
+    lastSearch = []
+    if rTop.status_code == 200:
+        data = rTop.json()['tracks']['data']
+        lastSearch = parse_result(sort_tracks(data))
+    elif rTop.status_code == 401 and rTop.json()['error'] == "invalid_token":
+            config['token'] = getToken(config['userId'], config['appToken'])
+            download_track(track_id, config['token'],)
+    else:
+        print('['+R+'Error'+W+']')
+        print(rTop.text)
+    return lastSearch
+
+def sort_tracks(data):
+    sortedTracks = {}
+    for track in data:
+        music = data[track]
+        sortedTracks[music['position']] = music
+
+    return sortedTracks
 
 if __name__ == "__main__":
     s = requests.Session()
     homedir = os.path.expanduser('~')
     config = get_config(homedir)
     args = parse_args()
+    topTimes = {
+        "week"    : 1,
+        "month"   : 2,
+        "3months"  : 3,
+        "halfyear": 4,
+        "year"    : 5}
 
     token = config['token']
 
@@ -159,7 +192,7 @@ if __name__ == "__main__":
 
     elif args.download:
         for track in args.download:
-            if track>=config['nb_results'] or track<=0:
+            if track>config['nb_results'] or track<=0:
                 print('['+R+'Error'+W+'] Unexpected index. (index given:'+str(track)+')')
                 continue
             lastDownload=download_track(config['search_history'][track-1], token)
@@ -171,6 +204,19 @@ if __name__ == "__main__":
         fHistory = open(homedir+'/.pleer_config', 'w+')
         json.dump(config, fHistory)
         fHistory.close()
+
+    elif args.top:
+        if args.top in topTimes:
+            lastSearch = get_top_tracks(topTimes[args.top], token)
+            if len(lastSearch) > 0:
+                config['search_history'] = lastSearch
+                config['nb_results'] = 20
+
+            fHistory = open(homedir+'/.pleer_config', 'w+')
+            json.dump(config,fHistory)
+            fHistory.close()
+        else:
+            print('['+R+'Error'+W+'] Unexpected period of time. (argument given:'+str(args.top)+')')
 
     if args.history:
         print('Last downloads '+GR+'(lastest first):\n')
