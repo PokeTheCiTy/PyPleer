@@ -31,4 +31,4 @@ will show the last downloaded tracks (up to 20). Can be combined with a research
 will show the top 20 songs from the month
 
 `$python3 pleer.py -t halfyear`
-will sho the top 20 songs from the last 6 months
+will show the top 20 songs from the last 6 months
